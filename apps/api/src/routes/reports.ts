@@ -11,6 +11,7 @@ import {
   type NewMediaItem,
 } from "../services/posts.js";
 import { isCloudinaryConfigured, uploadMedia } from "../lib/cloudinary.js";
+import { dispatchReport } from "../lib/dispatch.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import type { Location, ReportStatus } from "../types.js";
 
@@ -133,7 +134,11 @@ reportsRouter.post(
       mediaItems,
     );
 
-    res.status(201).json(report);
+    // Route the report to the right authority (by category) and send the
+    // context to their phone number. Non-blocking failures won't fail the save.
+    const dispatch = await dispatchReport(report);
+
+    res.status(201).json({ ...report, dispatch });
     } catch (err) {
       next(err);
     }
