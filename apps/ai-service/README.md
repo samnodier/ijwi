@@ -15,6 +15,10 @@ Set `AI_PROVIDER` in `.env`:
 
 Groq is OpenAI-compatible and multimodal — it reads the actual photos (flood, crash, pothole) to classify. Get a free key (no credit card) at https://console.groq.com/keys.
 
+### Resilience
+
+When `AI_PROVIDER=groq`, each call is retried once. If Groq is still unreachable (transient error, rate limit, bad key), the service automatically falls back to the `rules` classifier so it never hard-fails. Fallback responses are tagged `"provider": "rules (groq unavailable)"` so you can tell them apart.
+
 ## Endpoints
 
 All non-health endpoints require the header `X-Internal-Secret: <AI_SERVICE_SECRET>`.

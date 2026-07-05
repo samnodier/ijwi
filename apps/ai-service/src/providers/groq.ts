@@ -2,6 +2,7 @@ import Groq from "groq-sdk";
 
 import { config } from "../config.js";
 import type { AIProvider } from "./base.js";
+import { RulesProvider } from "./rules.js";
 import { suggestAuthorityId } from "./routing.js";
 import {
   ReportCategory,
@@ -13,6 +14,12 @@ import {
 
 // Groq's multimodal models accept at most 5 images per request.
 const MAX_IMAGES = 5;
+
+// Total attempts against Groq before giving up and falling back to rules.
+const MAX_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 400;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ANALYZE_SYSTEM_PROMPT = `You are a civic incident triage assistant for IJWI, a platform where \
 citizens report community problems. Analyze the report text and any photos, then respond with a \
@@ -30,6 +37,8 @@ export class GroqProvider implements AIProvider {
   readonly name = "groq";
   private client: Groq;
   private model: string;
+  // Used when Groq is unavailable so the service never hard-fails mid-demo.
+  private fallback = new RulesProvider();
 
   constructor() {
     if (!config.groqApiKey) {
@@ -39,6 +48,19 @@ export class GroqProvider implements AIProvider {
     }
     this.client = new Groq({ apiKey: config.groqApiKey });
     this.model = config.groqModel;
+  }
+
+  /** Run a Groq call with one retry; return null if every attempt fails. */
+  private async withRetry<T>(label: string, fn: () => Promise<T>): Promise<T | null> {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        console.warn(`[groq] ${label} attempt ${attempt}/${MAX_ATTEMPTS} failed: ${String(err)}`);
+        if (attempt < MAX_ATTEMPTS) await sleep(RETRY_DELAY_MS);
+      }
+    }
+    return null;
   }
 
   /** Download images and encode them as base64 data URLs Groq can read. */
@@ -59,6 +81,16 @@ export class GroqProvider implements AIProvider {
   }
 
   async analyze(request: AnalyzeReportRequest): Promise<AnalyzeReportResult> {
+    const result = await this.withRetry("analyze", () => this.callAnalyze(request));
+    if (result) return result;
+
+    // Groq unavailable after retries: degrade to the keyword classifier.
+    console.warn("[groq] analyze falling back to rules provider");
+    const fallback = await this.fallback.analyze(request);
+    return { ...fallback, provider: "rules (groq unavailable)" };
+  }
+
+  private async callAnalyze(request: AnalyzeReportRequest): Promise<AnalyzeReportResult> {
     const content: Groq.Chat.Completions.ChatCompletionContentPart[] = [
       { type: "text", text: `Report description: ${request.description || "(none provided)"}` },
     ];
@@ -99,6 +131,15 @@ export class GroqProvider implements AIProvider {
       return { digest: "No reports to summarize.", provider: this.name };
     }
 
+    const result = await this.withRetry("summarize", () => this.callSummarize(request));
+    if (result) return result;
+
+    console.warn("[groq] summarize falling back to rules provider");
+    const fallback = await this.fallback.summarize(request);
+    return { ...fallback, provider: "rules (groq unavailable)" };
+  }
+
+  private async callSummarize(request: SummarizeRequest): Promise<SummarizeResult> {
     const joined = request.summaries.map((s) => `- ${s}`).join("\n");
     const completion = await this.client.chat.completions.create({
       model: this.model,
