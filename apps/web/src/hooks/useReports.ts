@@ -1,35 +1,51 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type CreateReportInput, type Report } from "../api/client";
+import type { Report, ReportStatus } from "../types/report";
+import { useAuth } from "../context/AuthContext";
+import { fetchUserReports, submitAnonymousReport, submitReportToApi } from "../api/reports";
+import { updateReportStatus } from "../lib/storage";
 
 export function useReports() {
+  const { isAuthenticated, user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
-      setReports(await api.listReports());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load reports");
+      if (isAuthenticated) {
+        const data = await fetchUserReports();
+        setReports(data);
+      } else {
+        setReports([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    void refresh();
+    refresh();
   }, [refresh]);
 
-  const createReport = useCallback(
-    async (input: CreateReportInput) => {
-      const report = await api.createReport(input);
+  const submitReport = useCallback(
+    async (report: Report) => {
+      if (isAuthenticated) {
+        await submitReportToApi({ ...report, userId: user?.id, anonymous: false });
+      } else {
+        submitAnonymousReport(report);
+      }
       await refresh();
-      return report;
+    },
+    [isAuthenticated, user?.id, refresh],
+  );
+
+  const setStatus = useCallback(
+    (id: string, status: ReportStatus) => {
+      updateReportStatus(id, status);
+      refresh();
     },
     [refresh],
   );
 
-  return { reports, loading, error, refresh, createReport };
+  return { reports, submitReport, setStatus, refresh, loading };
 }
