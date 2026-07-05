@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 export const config = {
   aiProvider: (process.env.AI_PROVIDER ?? "rules").toLowerCase(),
   groqApiKey: process.env.GROQ_API_KEY ?? "",
