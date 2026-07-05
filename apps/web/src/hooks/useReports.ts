@@ -31,7 +31,7 @@ export function useReports() {
   const submitReport = useCallback(
     async (
       report: Report,
-      photoFile?: File | null,
+      photoFiles: File[] = [],
     ): Promise<{ ai?: AiInfo | null; dispatch?: DispatchInfo }> => {
       // Keep a local copy so the success screen and anonymous tracking work
       // even if the backend is unreachable.
@@ -43,7 +43,7 @@ export function useReports() {
       // and the dispatch result (used internally, not displayed).
       let ai: AiInfo | null | undefined;
       let dispatch: DispatchInfo | undefined;
-      if (photoFile) {
+      if (photoFiles.length > 0) {
         try {
           const created = await api.createReport(
             {
@@ -54,7 +54,7 @@ export function useReports() {
               category: report.analysis.tags?.[0] ?? report.analysis.issueType,
               location: report.location,
             },
-            [photoFile],
+            photoFiles,
           );
           ai = created.ai;
           dispatch = created.dispatch;

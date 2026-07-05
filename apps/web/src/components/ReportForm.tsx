@@ -21,6 +21,7 @@ export default function ReportForm() {
   const [step, setStep] = useState(() => (draft ? 1 : 0));
   const [photoFile, setPhotoFile] = useState<File | null>(() => draft?.file ?? null);
   const [photoPreview, setPhotoPreview] = useState<string>(() => draft?.preview ?? "");
+  const [extraPhotos, setExtraPhotos] = useState<{ file: File; preview: string }[]>([]);
   const [description, setDescription] = useState("");
   const [useLocation, setUseLocation] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -44,6 +45,27 @@ export default function ReportForm() {
     setPhotoFile(file);
     setPhotoPreview(preview);
     setAnalysis(null);
+  };
+
+  const handleExtraPhotoSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const array = Array.from(files);
+
+    const availableSlots = 9 - extraPhotos.length;
+    const filesToAdd = array.slice(0, availableSlots);
+
+    filesToAdd.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setExtraPhotos((prev) => [...prev, { file, preview: reader.result as string }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeExtraPhoto = (index: number) => {
+    setExtraPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const runAnalysis = async () => {
@@ -82,10 +104,10 @@ export default function ReportForm() {
         userId: user?.id,
         anonymous: !isAuthenticated,
       };
-      // The backend returns the integrated AI service's classification; pass it
-      // to the success screen. Routing/authority is dispatched silently on the
-      // backend and is intentionally never shown to the anonymous citizen.
-      const { ai } = await submitReport(report, photoFile);
+
+      const allFiles = [photoFile, ...extraPhotos.map((p) => p.file)];
+
+      const { ai } = await submitReport(report, allFiles);
       navigate(`/success/${report.id}`, { state: { ai } });
     } finally {
       setSubmitting(false);
@@ -120,6 +142,39 @@ export default function ReportForm() {
             Capture or upload a picture of the issue in your community.
           </p>
           <PhotoUpload onPhotoSelected={handlePhotoSelected} preview={photoPreview || undefined} />
+
+          {photoFile && (
+            <div className="mt-6 space-y-3">
+              <h3 className="text-sm font-semibold text-brand-900">Additional Photos (Optional)</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {extraPhotos.map((item, index) => (
+                  <div key={index} className="relative aspect-square overflow-hidden rounded-xl border border-brand-100 bg-brand-50 shadow-sm">
+                    <img src={item.preview} alt={`Extra preview ${index}`} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeExtraPhoto(index)}
+                      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600 text-xs font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {extraPhotos.length < 9 && (
+                  <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-brand-200 bg-white hover:border-accent-400 hover:bg-brand-50 transition shadow-sm">
+                    <span className="text-2xl font-bold text-brand-400">+</span>
+                    <span className="text-xs font-medium text-brand-500">Add photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleExtraPhotoSelected}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -134,7 +189,7 @@ export default function ReportForm() {
             <img
               src={photoPreview}
               alt="Captured issue"
-              className="mb-4 h-36 w-full rounded-xl object-cover"
+              className="mb-4 h-36 w-full rounded-xl object-cover border border-brand-100"
             />
           )}
 
@@ -166,18 +221,56 @@ export default function ReportForm() {
         <div className="space-y-4">
           <h2 className="text-lg font-bold text-brand-900">Review & submit</h2>
 
-          {photoPreview && (
-            <img src={photoPreview} alt="Issue" className="h-40 w-full rounded-xl object-cover" />
-          )}
+          <div className="grid grid-cols-3 gap-2">
+            {photoPreview && (
+              <div className="relative aspect-video col-span-3 rounded-xl overflow-hidden border border-brand-100 shadow-sm">
+                <img src={photoPreview} alt="Primary Issue" className="h-full w-full object-cover" />
+                <span className="absolute bottom-2 left-2 bg-accent-600/90 text-white text-xs px-2 py-0.5 rounded font-semibold backdrop-blur-sm shadow-sm">
+                  Primary (Analyzed)
+                </span>
+              </div>
+            )}
+            {extraPhotos.map((item, index) => (
+              <div key={index} className="relative aspect-square overflow-hidden rounded-xl border border-brand-100 bg-brand-50 shadow-sm">
+                <img src={item.preview} alt={`Extra preview ${index}`} className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeExtraPhoto(index)}
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow hover:bg-red-600 text-xs font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {extraPhotos.length < 9 && (
+              <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-brand-200 bg-white hover:border-accent-400 hover:bg-brand-50 transition shadow-sm">
+                <span className="text-xl font-bold text-brand-400">+</span>
+                <span className="text-xxs font-medium text-brand-500">Add photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleExtraPhotoSelected}
+                />
+              </label>
+            )}
+          </div>
 
           <AnalysisPanel analysis={analysis} loading={loading} progress={progress} />
 
-          {description && (
-            <div className="rounded-xl border border-brand-100 bg-white p-4 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-400">Your note</p>
-              <p className="mt-1 text-sm text-brand-700">{description}</p>
-            </div>
-          )}
+          <div className="rounded-xl border border-brand-100 bg-white p-4 shadow-sm">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-brand-400">
+              Your note / comments (Editable)
+            </span>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="Add more details or adjust your comments before submitting..."
+              className="w-full rounded-lg border border-brand-200 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
+            />
+          </div>
 
           {!isAuthenticated && (
             <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-600">
