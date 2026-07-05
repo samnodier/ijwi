@@ -2,7 +2,7 @@
 
 **Owner:** Backend B (AI)
 
-FastAPI service that classifies citizen reports (text + photos), scores urgency, and suggests the right authority. It is called by the Node worker in `apps/api/src/integrations`, never by the frontend directly.
+Node.js + TypeScript + Express service that classifies citizen reports (text + photos), scores urgency, and suggests the right authority. It is called by the Node worker in `apps/api/src/integrations`, never by the frontend directly.
 
 ## Providers (pluggable)
 
@@ -57,14 +57,41 @@ Response:
 
 ```bash
 cd apps/ai-service
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+npm install
 cp .env.example .env        # then set AI_PROVIDER and GROQ_API_KEY
-uvicorn app.main:app --reload --port 8000
+npm run dev
 ```
 
-Check it: `curl http://localhost:8000/health`
+Check it:
+
+```bash
+curl http://localhost:8000/health
+
+curl -X POST http://localhost:8000/analyze \
+  -H "Content-Type: application/json" \
+  -H "X-Internal-Secret: dev-internal-secret-change-me" \
+  -d '{"reportId":"1","description":"Major flooding, people trapped in cars","authorities":[{"id":"a1","name":"Fire","type":"fire"}]}'
+```
 
 ## Notes on images
 
 Photos live in MinIO/S3. Because free cloud models cannot reach `localhost`, the Groq provider downloads each image and sends it inline as base64. If an image URL is unreachable, it is skipped and analysis falls back to text only.
+
+## Structure
+
+```
+src/
+├── index.ts            # Express server entry
+├── config.ts           # Env config
+├── types.ts            # Zod schemas (the worker ↔ service contract)
+├── security.ts         # X-Internal-Secret middleware
+├── providers/
+│   ├── base.ts         # AIProvider interface
+│   ├── rules.ts        # Keyword classifier (default)
+│   ├── groq.ts         # Vision provider (Groq)
+│   ├── routing.ts      # Category → authority mapping
+│   └── index.ts        # getProvider() factory
+└── routes/
+    ├── analyze.ts      # POST /analyze
+    └── summarize.ts    # POST /summarize
+```
