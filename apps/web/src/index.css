@@ -1,0 +1,21 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #f0f4f8;
+  --color-brand-100: #d9e2ec;
+  --color-brand-200: #bcccdc;
+  --color-brand-500: #486581;
+  --color-brand-600: #334e68;
+  --color-brand-700: #243b53;
+  --color-brand-800: #102a43;
+  --color-brand-900: #0a1929;
+  --color-accent-500: #1d6fa4;
+  --color-accent-600: #155a87;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  @apply bg-brand-50 text-brand-900 antialiased;
+  font-family: var(--font-sans);
+}
