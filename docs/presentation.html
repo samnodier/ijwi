@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IJWI — Problem, Solution & How We Used Cursor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0a0a0f;
+        --bg-2: #12121a;
+        --card: rgba(20, 20, 30, 0.66);
+        --border: rgba(255, 255, 255, 0.08);
+        --border-hi: rgba(0, 212, 255, 0.35);
+        --text: #f0f0f5;
+        --muted: #9aa0b0;
+        --dim: #626b7e;
+        --cyan: #00d4ff;
+        --purple: #a855f7;
+        --green: #22c55e;
+        --grad: linear-gradient(135deg, #00d4ff 0%, #a855f7 100%);
+        --font: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+      }
+
+      /* Background glow */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(
+            1000px 700px at 12% -10%,
+            rgba(0, 212, 255, 0.1),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 600px at 100% 110%,
+            rgba(168, 85, 247, 0.12),
+            transparent 55%
+          );
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .deck {
+        position: relative;
+        height: 100vh;
+        width: 100vw;
+        z-index: 1;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        padding: 6vh 8vw;
+        animation: fade 0.5s ease;
+      }
+      .slide.active {
+        display: flex;
+      }
+
+      @keyframes fade {
+        from {
+          opacity: 0;
+          transform: translateY(14px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .kicker {
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        margin-bottom: 1.1rem;
+      }
+
+      h1 {
+        font-size: clamp(2.4rem, 5.4vw, 4.4rem);
+        font-weight: 800;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+      }
+      h2 {
+        font-size: clamp(1.8rem, 3.8vw, 3rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 1.8rem;
+      }
+      .grad {
+        background: var(--grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      p.lead {
+        font-size: clamp(1.05rem, 1.7vw, 1.4rem);
+        color: var(--muted);
+        max-width: 60ch;
+        line-height: 1.6;
+      }
+
+      .cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.4rem;
+        margin-top: 0.5rem;
+      }
+      .cols-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.2rem;
+        margin-top: 0.5rem;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem 1.6rem;
+        backdrop-filter: blur(10px);
+      }
+      .card.hi {
+        border-color: var(--border-hi);
+        box-shadow: 0 0 40px rgba(0, 212, 255, 0.08);
+      }
+      .card h3 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-bottom: 0.55rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .card p {
+        color: var(--muted);
+        font-size: 0.98rem;
+        line-height: 1.55;
+      }
+
+      .ico {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(
+          135deg,
+          rgba(0, 212, 255, 0.16),
+          rgba(168, 85, 247, 0.16)
+        );
+        color: var(--cyan);
+        font-size: 1.05rem;
+        flex: none;
+      }
+
+      ul.checks {
+        list-style: none;
+        margin-top: 1rem;
+        display: grid;
+        gap: 0.85rem;
+        max-width: 70ch;
+      }
+      ul.checks li {
+        display: flex;
+        gap: 0.8rem;
+        align-items: flex-start;
+        font-size: clamp(1rem, 1.5vw, 1.18rem);
+        color: var(--text);
+        line-height: 1.5;
+      }
+      ul.checks li::before {
+        content: "▹";
+        color: var(--cyan);
+        font-weight: 700;
+        margin-top: 0.1rem;
+      }
+      ul.checks li b {
+        color: var(--text);
+      }
+      ul.checks li span {
+        color: var(--muted);
+      }
+
+      .pill {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: var(--muted);
+        padding: 0.28rem 0.6rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1.4rem;
+      }
+
+      .stat-row {
+        display: flex;
+        gap: 2.5rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+      }
+      .stat .num {
+        font-family: var(--mono);
+        font-size: 2.4rem;
+        font-weight: 600;
+        background: var(--grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .stat .lbl {
+        color: var(--dim);
+        font-size: 0.85rem;
+        margin-top: 0.2rem;
+      }
+
+      .flow {
+        display: flex;
+        align-items: stretch;
+        gap: 0.8rem;
+        margin-top: 1.4rem;
+        flex-wrap: wrap;
+      }
+      .node {
+        flex: 1;
+        min-width: 150px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.15rem;
+      }
+      .node .t {
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+        font-size: 1rem;
+      }
+      .node .d {
+        color: var(--muted);
+        font-size: 0.85rem;
+        line-height: 1.45;
+      }
+      .arrow {
+        align-self: center;
+        color: var(--cyan);
+        font-size: 1.5rem;
+      }
+
+      .tag {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        color: var(--green);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        background: rgba(34, 197, 94, 0.08);
+        border-radius: 999px;
+        padding: 0.2rem 0.7rem;
+        margin-bottom: 1.2rem;
+      }
+
+      /* News evidence */
+      .news {
+        display: grid;
+        gap: 1rem;
+        align-content: center;
+      }
+      .news-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.6rem;
+        margin-top: 0.6rem;
+        align-items: start;
+      }
+      .shot {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      }
+      .shot img {
+        width: 100%;
+        display: block;
+      }
+      .shot figcaption {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        color: var(--dim);
+        padding: 0.5rem 0.75rem;
+        border-top: 1px solid var(--border);
+        background: var(--bg-2);
+      }
+      .evidence {
+        margin-top: 1.3rem;
+        color: var(--muted);
+        font-size: 0.98rem;
+      }
+      .evidence b {
+        color: var(--cyan);
+      }
+
+      .center {
+        text-align: center;
+        align-items: center;
+      }
+      .center p.lead {
+        margin-inline: auto;
+      }
+      .center .pill-row {
+        justify-content: center;
+      }
+
+      .logo {
+        font-family: var(--mono);
+        font-weight: 600;
+        font-size: 1rem;
+        letter-spacing: 0.02em;
+      }
+      .logo .b {
+        color: var(--cyan);
+      }
+
+      /* Chrome */
+      .topbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .progress {
+        height: 100%;
+        width: 0;
+        background: var(--grad);
+        transition: width 0.35s ease;
+      }
+
+      .footer {
+        position: fixed;
+        bottom: 22px;
+        left: 8vw;
+        right: 8vw;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10;
+        color: var(--dim);
+        font-size: 0.8rem;
+      }
+      .dots {
+        display: flex;
+        gap: 8px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
+        cursor: pointer;
+        transition: all 0.25s;
+      }
+      .dot.active {
+        background: var(--cyan);
+        width: 22px;
+        border-radius: 4px;
+      }
+      .counter {
+        font-family: var(--mono);
+      }
+      .hint {
+        font-family: var(--mono);
+      }
+
+      .nav-btn {
+        position: fixed;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 10;
+        background: var(--card);
+        border: 1px solid var(--border);
+        color: var(--text);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        font-size: 1.2rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+        transition: all 0.2s;
+      }
+      .nav-btn:hover {
+        border-color: var(--border-hi);
+        color: var(--cyan);
+      }
+      #prev {
+        left: 18px;
+      }
+      #next {
+        right: 18px;
+      }
+
+      /* Print → one slide per page */
+      @media print {
+        @page {
+          size: 1280px 720px;
+          margin: 0;
+        }
+        html,
+        body {
+          overflow: visible;
+          height: auto;
+        }
+        .topbar,
+        .footer,
+        .nav-btn {
+          display: none !important;
+        }
+        .slide {
+          display: flex !important;
+          position: relative;
+          inset: auto;
+          height: 720px;
+          width: 1280px;
+          page-break-after: always;
+          animation: none;
+        }
+        body::before {
+          position: absolute;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar"><div class="progress" id="progress"></div></div>
+
+    <div class="deck" id="deck">
+      <!-- 1 · Title -->
+      <section class="slide active center">
+        <div class="logo">
+          <span class="b">&lt;</span> IJWI <span class="b">/&gt;</span>
+        </div>
+        <div class="kicker" style="margin-top: 1.6rem">
+          Citizen Reporting Platform · Rwanda
+        </div>
+        <h1>Give every citizen<br /><span class="grad">a voice</span></h1>
+        <p class="lead" style="margin-top: 1.4rem">
+          A single place for Rwandans to report issues, reach the right
+          authority, and find every official emergency and government contact
+          number.
+        </p>
+        <div class="pill-row">
+          <span class="pill">React + Vite + TypeScript</span>
+          <span class="pill">Built with Cursor</span>
+          <span class="pill">github.com/samnodier/ijwi</span>
+        </div>
+      </section>
+
+      <!-- 2 · Problem -->
+      <section class="slide">
+        <div class="kicker">01 — Problem Statement</div>
+        <h2>
+          Reporting an issue is
+          <span class="grad">harder than it should be</span>
+        </h2>
+        <ul class="checks">
+          <li>
+            <span
+              ><b>Scattered contacts.</b> Emergency and government numbers (112,
+              912, 2727, 3535, 9099…) live across dozens of separate websites
+              and posters.</span
+            >
+          </li>
+          <li>
+            <span
+              ><b>Wrong door, lost time.</b> Citizens don't know
+              <i>which</i> institution handles their problem, so reports bounce
+              or never arrive.</span
+            >
+          </li>
+          <li>
+            <span
+              ><b>No feedback loop.</b> Once you call or report, there's little
+              visibility into whether anything happens.</span
+            >
+          </li>
+          <li>
+            <span
+              ><b>Projects stall.</b> Delayed and unfinished works go unreported
+              — until they make headlines.</span
+            >
+          </li>
+        </ul>
+        <div class="stat-row">
+          <div class="stat">
+            <div class="num">15+</div>
+            <div class="lbl">agencies &amp; hotlines to know</div>
+          </div>
+          <div class="stat">
+            <div class="num">0</div>
+            <div class="lbl">unified entry points today</div>
+          </div>
+          <div class="stat">
+            <div class="num">24/7</div>
+            <div class="lbl">need for response</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3 · Evidence -->
+      <section class="slide">
+        <div class="kicker">01 — Problem · In The Headlines</div>
+        <h2>
+          This isn't hypothetical —
+          <span class="grad">it's front-page news</span>
+        </h2>
+        <div class="news-row">
+          <figure class="shot">
+            <img
+              src="Kagame-delayed.png"
+              alt="The New Times: Kagame — Leaders must be held accountable for delayed projects"
+            />
+            <figcaption>
+              The New Times — "Leaders must be held accountable for delayed
+              projects"
+            </figcaption>
+          </figure>
+          <figure class="shot">
+            <img
+              src="newtimes.png"
+              alt="The New Times: What next for Kigali's unfinished drainage projects?"
+            />
+            <figcaption>
+              The New Times — "What next for Kigali's unfinished drainage
+              projects?"
+            </figcaption>
+          </figure>
+        </div>
+        <p class="evidence">
+          <b
+            >Accountability and unfinished projects are national
+            conversations.</b
+          >
+          IJWI turns that top-down pressure into a bottom-up tool — letting any
+          citizen flag a stalled project or issue the moment they see it.
+        </p>
+      </section>
+
+      <!-- 3 · Solution -->
+      <section class="slide">
+        <div class="kicker">02 — Our Solution</div>
+        <h2>
+          IJWI: report, route, resolve — <span class="grad">in one place</span>
+        </h2>
+        <div class="cols">
+          <div class="card hi">
+            <h3><span class="ico">✎</span> Report an issue</h3>
+            <p>
+              Citizens submit a report with a description, photo, and location
+              in seconds — no need to know which office is responsible.
+            </p>
+          </div>
+          <div class="card hi">
+            <h3><span class="ico">☎</span> Unified numbers directory</h3>
+            <p>
+              Every verified emergency &amp; government contact, with a "who do
+              I call?" guide that maps a problem to the right hotline.
+            </p>
+          </div>
+          <div class="card">
+            <h3><span class="ico">▤</span> Authority dashboard</h3>
+            <p>
+              Officials get a structured inbox of incoming reports instead of
+              scattered calls and messages.
+            </p>
+          </div>
+          <div class="card">
+            <h3><span class="ico">✦</span> AI summary digest</h3>
+            <p>
+              An AI-generated digest surfaces patterns and priorities so
+              authorities can act on what matters first.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 · What it does / directory -->
+      <section class="slide">
+        <div class="kicker">03 — Inside the Product</div>
+        <h2>A real, verified <span class="grad">contact directory</span></h2>
+        <p class="lead">
+          We compiled official numbers straight from
+          <span style="color: var(--text)">.gov.rw</span> sources into a
+          structured, searchable reference — the backbone of the platform's
+          "/numbers" page.
+        </p>
+        <div class="cols-3" style="margin-top: 1.6rem">
+          <div class="card">
+            <h3 style="font-size: 1rem">
+              <span class="ico">🚨</span> Emergency
+            </h3>
+            <p>
+              <b style="color: var(--cyan)">112</b> Police ·
+              <b style="color: var(--cyan)">912</b> Ambulance ·
+              <b style="color: var(--cyan)">111</b> Fire ·
+              <b style="color: var(--cyan)">166</b> RIB ·
+              <b style="color: var(--cyan)">3512</b> GBV
+            </p>
+          </div>
+          <div class="card">
+            <h3 style="font-size: 1rem">
+              <span class="ico">🏛</span> Services
+            </h3>
+            <p>
+              <b style="color: var(--cyan)">9099</b> Irembo ·
+              <b style="color: var(--cyan)">3004</b> RRA ·
+              <b style="color: var(--cyan)">4044</b> RSSB ·
+              <b style="color: var(--cyan)">1415</b> RDB ·
+              <b style="color: var(--cyan)">9090</b> Immigration
+            </p>
+          </div>
+          <div class="card">
+            <h3 style="font-size: 1rem">
+              <span class="ico">💡</span> Utilities
+            </h3>
+            <p>
+              <b style="color: var(--cyan)">2727</b> Electricity ·
+              <b style="color: var(--cyan)">3535</b> Water ·
+              <b style="color: var(--cyan)">3988</b> RURA ·
+              <b style="color: var(--cyan)">3260</b> City of Kigali ·
+              <b style="color: var(--cyan)">199</b> Ombudsman
+            </p>
+          </div>
+        </div>
+        <div class="pill-row">
+          <span class="pill"
+            >Sources: police.gov.rw, rib.gov.rw, irembo.gov.rw, rra.gov.rw,
+            reg.rw, wasac.rw, rura.rw, rdb.rw…</span
+          >
+        </div>
+      </section>
+
+      <!-- 5 · How we used Cursor -->
+      <section class="slide">
+        <div class="kicker">04 — Built with Cursor</div>
+        <h2>Every step was <span class="grad">accelerated by Cursor</span></h2>
+        <div class="cols-3">
+          <div class="card hi">
+            <h3 style="font-size: 1.02rem">
+              <span class="ico">⌕</span> Research
+            </h3>
+            <p>
+              Cursor's web search gathered and cross-checked official hotline
+              numbers from 15+ <span class="mono">.gov.rw</span> sites, then
+              compiled them into a clean Markdown directory with a "who to call"
+              table.
+            </p>
+          </div>
+          <div class="card hi">
+            <h3 style="font-size: 1.02rem">
+              <span class="ico">⌥</span> Scaffolding
+            </h3>
+            <p>
+              Generated the React + Vite + TypeScript app structure — routes,
+              pages, a typed API client, and config — instead of wiring
+              boilerplate by hand.
+            </p>
+          </div>
+          <div class="card hi">
+            <h3 style="font-size: 1.02rem">
+              <span class="ico">⎇</span> Git workflow
+            </h3>
+            <p>
+              Inspected the repo through the GitHub API to confirm the
+              <span class="mono">Lionel-Code</span> branch was pushed, and
+              diffed it against <span class="mono">main</span> to explain
+              exactly what changed.
+            </p>
+          </div>
+          <div class="card">
+            <h3 style="font-size: 1.02rem">
+              <span class="ico">⚙</span> Debugging
+            </h3>
+            <p>
+              Diagnosed a broken local environment — traced failures to Git not
+              being installed and guided the fix, then planned clone / rename /
+              commit steps.
+            </p>
+          </div>
+          <div class="card">
+            <h3 style="font-size: 1.02rem">
+              <span class="ico">✦</span> Content &amp; docs
+            </h3>
+            <p>
+              Authored structured Markdown, README content, and a repo
+              reorganization plan (rename <span class="mono">Desktop/</span> →
+              <span class="mono">docs/</span>,
+              <span class="mono">phone numbers</span> →
+              <span class="mono">phone-numbers.md</span>).
+            </p>
+          </div>
+          <div class="card">
+            <h3 style="font-size: 1.02rem">
+              <span class="ico">◑</span> Design
+            </h3>
+            <p>
+              Produced polished, dark-mode, high-tech UI — including this very
+              slide deck — from natural-language prompts.
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <button class="nav-btn" id="prev" aria-label="Previous slide">‹</button>
+    <button class="nav-btn" id="next" aria-label="Next slide">›</button>
+
+    <div class="footer">
+      <div class="logo" style="font-size: 0.85rem">
+        <span class="b">&lt;</span> IJWI <span class="b">/&gt;</span>
+      </div>
+      <div class="dots" id="dots"></div>
+      <div>
+        <span class="counter" id="counter">1 / 6</span> &nbsp;·&nbsp;
+        <span class="hint">← → to navigate · F fullscreen</span>
+      </div>
+    </div>
+
+    <script>
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      const dotsWrap = document.getElementById("dots");
+      const counter = document.getElementById("counter");
+      const progress = document.getElementById("progress");
+      let i = 0;
+
+      slides.forEach((_, idx) => {
+        const d = document.createElement("div");
+        d.className = "dot" + (idx === 0 ? " active" : "");
+        d.addEventListener("click", () => go(idx));
+        dotsWrap.appendChild(d);
+      });
+      const dots = Array.from(dotsWrap.children);
+
+      function go(n) {
+        i = Math.max(0, Math.min(slides.length - 1, n));
+        slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
+        dots.forEach((d, idx) => d.classList.toggle("active", idx === i));
+        counter.textContent = i + 1 + " / " + slides.length;
+        progress.style.width = ((i + 1) / slides.length) * 100 + "%";
+      }
+
+      document
+        .getElementById("next")
+        .addEventListener("click", () => go(i + 1));
+      document
+        .getElementById("prev")
+        .addEventListener("click", () => go(i - 1));
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
+          e.preventDefault();
+          go(i + 1);
+        } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+          e.preventDefault();
+          go(i - 1);
+        } else if (e.key === "Home") go(0);
+        else if (e.key === "End") go(slides.length - 1);
+        else if (e.key.toLowerCase() === "f") {
+          if (!document.fullscreenElement)
+            document.documentElement.requestFullscreen();
+          else document.exitFullscreen();
+        }
+      });
+
+      go(0);
+    </script>
+  </body>
+</html>
