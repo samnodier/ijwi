@@ -56,9 +56,8 @@ export default function SuccessPage() {
         className="h-40 w-full rounded-xl object-cover"
       />
 
-      <DepartmentCard department={report.analysis.department} />
-
-      {dispatch && (
+      {dispatch ? (
+        // Authoritative routing: the real authority the backend dispatched to.
         <Card className="text-left">
           <div className="flex items-center gap-2">
             <PhoneCall className="h-4 w-4 text-accent-600" />
@@ -66,18 +65,22 @@ export default function SuccessPage() {
               Alert dispatched
             </p>
           </div>
-          <p className="mt-2 text-sm text-brand-700">
-            Routed to <span className="font-semibold">{dispatch.authorityName}</span> (
-            <span className="font-mono">{dispatch.number}</span>) — {dispatch.reason}.
+          <p className="mt-2 text-center text-lg font-bold text-brand-900">
+            {dispatch.authorityName}
           </p>
-          <p className="mt-1 text-xs text-brand-500">
+          <p className="text-center text-sm text-brand-600">
+            Contact: <span className="font-mono">{dispatch.number}</span> · {dispatch.reason}
+          </p>
+          <p className="mt-3 border-t border-brand-100 pt-2 text-xs text-brand-500">
             {dispatch.channel === "log"
-              ? "Message logged (no SMS provider configured)."
+              ? "Message logged (no SMS provider configured yet)."
               : dispatch.delivered
                 ? `Sent via ${dispatch.channel} to ${dispatch.deliveredTo}.`
                 : `Delivery to ${dispatch.deliveredTo} failed — check provider settings.`}
           </p>
         </Card>
+      ) : (
+        <DepartmentCard department={report.analysis.department} />
       )}
 
       <div className="flex flex-col gap-3">
