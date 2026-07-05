@@ -91,6 +91,31 @@ export interface CreateReportInput {
   location?: Location;
 }
 
+// Extra fields the backend attaches to a freshly created report: how it was
+// classified (ai) and where its context was dispatched (dispatch).
+export interface DispatchInfo {
+  authorityName: string;
+  number: string;
+  reason: string;
+  message: string;
+  channel: string;
+  delivered: boolean;
+  deliveredTo: string;
+  sentAt: string;
+}
+
+export interface AiInfo {
+  category: string;
+  urgency: number;
+  summary: string;
+  provider: string;
+}
+
+export interface CreateReportResponse extends Report {
+  dispatch?: DispatchInfo;
+  ai?: AiInfo | null;
+}
+
 export interface DashboardSummary {
   total: number;
   byStatus: Record<string, number>;
@@ -153,7 +178,7 @@ export const api = {
     if (input.location) form.append("location", JSON.stringify(input.location));
     for (const file of media) form.append("media", file);
 
-    return apiFetch<Report>("/reports", { method: "POST", body: form });
+    return apiFetch<CreateReportResponse>("/reports", { method: "POST", body: form });
   },
 
   updateReportStatus: (id: string, status: ReportStatus) =>

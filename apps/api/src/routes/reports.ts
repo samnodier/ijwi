@@ -11,6 +11,7 @@ import {
   type NewMediaItem,
 } from "../services/posts.js";
 import { isCloudinaryConfigured, uploadMedia } from "../lib/cloudinary.js";
+import { analyzeWithAi } from "../lib/aiClient.js";
 import { dispatchReport } from "../lib/dispatch.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import type { Location, ReportStatus } from "../types.js";
@@ -134,11 +135,17 @@ reportsRouter.post(
       mediaItems,
     );
 
-    // Route the report to the right authority (by category) and send the
-    // context to their phone number. Non-blocking failures won't fail the save.
-    const dispatch = await dispatchReport(report);
+    // If the AI service is configured, let it (re)classify from the photos +
+    // text so routing reflects what's actually in the image. Falls back to the
+    // citizen-provided category when the AI service is off or unreachable.
+    const ai = await analyzeWithAi(report);
+    const routedReport = ai ? { ...report, category: ai.category } : report;
 
-    res.status(201).json({ ...report, dispatch });
+    // Route to the right authority (by category) and send the context to their
+    // phone number. Non-blocking failures won't fail the save.
+    const dispatch = await dispatchReport(routedReport);
+
+    res.status(201).json({ ...report, ai, dispatch });
     } catch (err) {
       next(err);
     }

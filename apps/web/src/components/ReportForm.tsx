@@ -91,8 +91,8 @@ export default function ReportForm() {
         userId: user?.id,
         anonymous: !isAuthenticated,
       };
-      await submitReport(report);
-      navigate(`/success/${report.id}`);
+      const dispatch = await submitReport(report, photoFile);
+      navigate(`/success/${report.id}`, { state: { dispatch } });
     } finally {
       setSubmitting(false);
     }

@@ -1,7 +1,8 @@
-import { Link, useParams } from "react-router-dom";
-import { CheckCircle2 } from "lucide-react";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { CheckCircle2, PhoneCall } from "lucide-react";
 import { getReport } from "../lib/storage";
 import { useAuth } from "../context/AuthContext";
+import type { DispatchInfo } from "../api/client";
 import { DepartmentCard } from "../components/report/DepartmentCard";
 import { StatusBadge } from "../components/reports/StatusBadge";
 import { Button } from "../components/ui/Button";
@@ -11,6 +12,8 @@ export default function SuccessPage() {
   const { id } = useParams<{ id: string }>();
   const report = id ? getReport(id) : undefined;
   const { isAuthenticated } = useAuth();
+  const routerLocation = useLocation();
+  const dispatch = (routerLocation.state as { dispatch?: DispatchInfo } | null)?.dispatch;
 
   if (!report) {
     return (
@@ -54,6 +57,28 @@ export default function SuccessPage() {
       />
 
       <DepartmentCard department={report.analysis.department} />
+
+      {dispatch && (
+        <Card className="text-left">
+          <div className="flex items-center gap-2">
+            <PhoneCall className="h-4 w-4 text-accent-600" />
+            <p className="text-xs font-medium uppercase tracking-wide text-brand-400">
+              Alert dispatched
+            </p>
+          </div>
+          <p className="mt-2 text-sm text-brand-700">
+            Routed to <span className="font-semibold">{dispatch.authorityName}</span> (
+            <span className="font-mono">{dispatch.number}</span>) — {dispatch.reason}.
+          </p>
+          <p className="mt-1 text-xs text-brand-500">
+            {dispatch.channel === "log"
+              ? "Message logged (no SMS provider configured)."
+              : dispatch.delivered
+                ? `Sent via ${dispatch.channel} to ${dispatch.deliveredTo}.`
+                : `Delivery to ${dispatch.deliveredTo} failed — check provider settings.`}
+          </p>
+        </Card>
+      )}
 
       <div className="flex flex-col gap-3">
         {isAuthenticated ? (
