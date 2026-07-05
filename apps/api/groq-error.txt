@@ -1,0 +1,4 @@
+Model: meta-llama/llama-4-scout-17b-16e-instruct
+Status: 400
+Response: {"error":{"message":"invalid image data","type":"invalid_request_error"}}
+

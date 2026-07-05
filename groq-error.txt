@@ -1,0 +1,6 @@
+Checking connection to Groq API...
+API Key: undefined
+Model: llama-3.2-11b-vision-preview
+Status: 401
+Response: {"error":{"message":"Invalid API Key","type":"invalid_request_error","code":"invalid_api_key"}}
+

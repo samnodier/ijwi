@@ -165,7 +165,8 @@ export async function analyzeWithAi(report: ReportDTO): Promise<AiAnalysis | nul
       });
 
       if (!res.ok) {
-        throw new Error(`Groq API responded with status ${res.status}`);
+        const errorText = await res.text();
+        throw new Error(`Groq API responded with status ${res.status}: ${errorText}`);
       }
 
       const data = await res.json() as any;
@@ -185,6 +186,65 @@ export async function analyzeWithAi(report: ReportDTO): Promise<AiAnalysis | nul
 
   // 3. Failover / Default: Rules-based local classifier
   const localAnalysis = analyzeWithRules(report.description);
+  return {
+    ...localAnalysis,
+    provider: groqApiKey ? "rules (groq-direct failed)" : "rules (local default)",
+  };
+}
+
+export async function analyzeImageBuffer(
+  buffer: Buffer,
+  mimetype: string,
+  description: string = ""
+): Promise<AiAnalysis> {
+  const dataUrl = `data:${mimetype};base64,${buffer.toString("base64")}`;
+  const groqApiKey = process.env.GROQ_API_KEY;
+
+  if (groqApiKey) {
+    try {
+      const model = process.env.GROQ_MODEL || "llama-3.2-11b-vision-preview";
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${groqApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: ANALYZE_SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: `Report description: ${description || "(none provided)"}` },
+                { type: "image_url", image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Groq API responded with status ${res.status}: ${errorText}`);
+      }
+
+      const data = await res.json() as any;
+      const parsed = JSON.parse(data.choices?.[0]?.message?.content || "{}");
+      return {
+        category: sanitizeCategory(parsed.category),
+        urgency: Math.max(1, Math.min(5, Number(parsed.urgency) || 3)),
+        summary: String(parsed.summary || description || "Citizen report.").trim(),
+        provider: "groq-direct",
+      };
+    } catch (err) {
+      console.warn(`[ai] direct image buffer analyze failed, falling back: ${String(err)}`);
+    }
+  }
+
+  const localAnalysis = analyzeWithRules(description);
   return {
     ...localAnalysis,
     provider: groqApiKey ? "rules (groq-direct failed)" : "rules (local default)",
