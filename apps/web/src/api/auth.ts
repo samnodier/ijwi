@@ -2,32 +2,48 @@ import { apiFetch } from "./client";
 import type { AuthCredentials, AuthResponse, SignupData, User } from "../types/auth";
 import { clearStoredAuth, getStoredToken, setStoredAuth } from "../lib/authStorage";
 
+// The backend represents the display name as `displayName`; the frontend uses `name`.
+type BackendUser = {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  avatarUrl?: string | null;
+  createdAt?: string;
+};
+
+type BackendAuthResponse = {
+  token: string;
+  user: BackendUser;
+};
+
+function mapUser(u: BackendUser): User {
+  return {
+    id: u.id,
+    email: u.email ?? "",
+    name: u.displayName ?? u.email ?? "",
+  };
+}
+
 export async function login(credentials: AuthCredentials): Promise<AuthResponse> {
-  try {
-    const response = await apiFetch<AuthResponse>("/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(credentials),
-    });
-    setStoredAuth(response.token, response.user);
-    return response;
-  } catch {
-    return mockAuth(credentials.email, credentials.email.split("@")[0]);
-  }
+  const res = await apiFetch<BackendAuthResponse>("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(credentials),
+  });
+  const user = mapUser(res.user);
+  setStoredAuth(res.token, user);
+  return { token: res.token, user };
 }
 
 export async function signup(data: SignupData): Promise<AuthResponse> {
-  try {
-    const response = await apiFetch<AuthResponse>("/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    setStoredAuth(response.token, response.user);
-    return response;
-  } catch {
-    return mockAuth(data.email, data.name);
-  }
+  const res = await apiFetch<BackendAuthResponse>("/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const user = mapUser(res.user);
+  setStoredAuth(res.token, user);
+  return { token: res.token, user };
 }
 
 export async function fetchCurrentUser(): Promise<User | null> {
@@ -35,23 +51,16 @@ export async function fetchCurrentUser(): Promise<User | null> {
   if (!token) return null;
 
   try {
-    return await apiFetch<User>("/auth/me", {
+    const user = await apiFetch<BackendUser>("/auth/me", {
       headers: { Authorization: `Bearer ${token}` },
     });
+    return mapUser(user);
   } catch {
+    // Invalid/expired token — treat as signed out.
     return null;
   }
 }
 
 export function logout(): void {
   clearStoredAuth();
-}
-
-function mockAuth(email: string, name: string): AuthResponse {
-  const response: AuthResponse = {
-    token: `mock-${crypto.randomUUID()}`,
-    user: { id: crypto.randomUUID(), email, name },
-  };
-  setStoredAuth(response.token, response.user);
-  return response;
 }

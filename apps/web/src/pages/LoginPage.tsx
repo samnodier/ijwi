@@ -22,8 +22,10 @@ export default function LoginPage() {
     try {
       await login({ email, password });
       navigate(from, { replace: true });
-    } catch {
-      setError("Unable to sign in. Please check your credentials.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to sign in. Please check your credentials.",
+      );
     } finally {
       setLoading(false);
     }

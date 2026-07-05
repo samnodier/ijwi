@@ -1,5 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
-const TOKEN_KEY = "ijwi_token";
+// Shared with lib/authStorage.ts so apiFetch auto-attaches the stored token.
+const TOKEN_KEY = "ijwi-token";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
