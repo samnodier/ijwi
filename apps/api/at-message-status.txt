@@ -1,0 +1,9 @@
+Testing Africa's Talking messaging...
+API Key: atsk_41e5f...
+Username: sandbox
+Demo Phone: +254712345678
+Result: {
+  "channel": "africastalking-sms",
+  "to": "+254712345678",
+  "delivered": true
+}

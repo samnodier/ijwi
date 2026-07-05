@@ -19,41 +19,39 @@ function mapDtoToReport(dto: any): Report {
   const photoDataUrl = dto.photos && dto.photos.length > 0 ? dto.photos[0] : "";
   const category = dto.category || "other";
 
-  let deptId = "security";
-  let issueType = "Community Issue";
-  let severity: Severity = "medium";
-  let summary = dto.description || "Citizen report.";
+  const CATEGORY_DETAILS: Record<string, { deptId: string; issueType: string; severity: Severity }> = {
+    security: { deptId: "security", issueType: "Security / Crime Incident", severity: "high" },
+    traffic: { deptId: "traffic", issueType: "Traffic Accident", severity: "critical" },
+    fire: { deptId: "fire", issueType: "Fire Emergency", severity: "critical" },
+    medical: { deptId: "medical", issueType: "Medical Emergency", severity: "critical" },
+    gbv: { deptId: "gbv", issueType: "Gender-Based Violence Report", severity: "critical" },
+    child: { deptId: "child", issueType: "Child Protection Concern", severity: "high" },
+    fraud: { deptId: "fraud", issueType: "Fraud / Cybercrime", severity: "medium" },
+    corruption: { deptId: "corruption", issueType: "Corruption / Bribe Report", severity: "medium" },
+    governance: { deptId: "governance", issueType: "Injustice / Stalled Project", severity: "low" },
+    water: { deptId: "water", issueType: "Water Supply Issue", severity: "medium" },
+    power: { deptId: "power", issueType: "Power / Electricity Fault", severity: "medium" },
+    flood: { deptId: "water", issueType: "Flooding / Water Emergency", severity: "critical" },
+    accident: { deptId: "traffic", issueType: "Traffic Accident", severity: "critical" },
+    infrastructure: { deptId: "water", issueType: "Road / Infrastructure Damage", severity: "medium" },
+    gov_delay: { deptId: "governance", issueType: "Governance / Delay Issue", severity: "low" },
+    safety: { deptId: "security", issueType: "Security / Safety Incident", severity: "high" },
+  };
 
-  if (category === "flood") {
-    deptId = "water";
-    issueType = "Flooding / Water Emergency";
-    severity = "critical";
-  } else if (category === "accident") {
-    deptId = "traffic";
-    issueType = "Traffic Accident";
-    severity = "critical";
-  } else if (category === "infrastructure") {
-    deptId = "water";
-    if (dto.description && /electricity|power|light/i.test(dto.description)) {
-      deptId = "power";
-      issueType = "Power / Electricity Fault";
-    } else {
-      issueType = "Road / Infrastructure Damage";
-    }
-    severity = "medium";
-  } else if (category === "gov_delay") {
-    deptId = "governance";
-    issueType = "Governance / Delay Issue";
-    severity = "low";
-  } else if (category === "safety") {
-    deptId = "security";
-    issueType = "Security / Safety Incident";
-    severity = "high";
-  } else {
-    deptId = "security";
-    issueType = "Community Incident";
-    severity = "low";
+  if (category === "infrastructure" && dto.description && /electricity|power|light/i.test(dto.description)) {
+    CATEGORY_DETAILS.infrastructure = { deptId: "power", issueType: "Power / Electricity Fault", severity: "medium" };
   }
+
+  const details = CATEGORY_DETAILS[category] || {
+    deptId: "security",
+    issueType: "Community Incident",
+    severity: "low",
+  };
+
+  const deptId = details.deptId;
+  const issueType = details.issueType;
+  const severity = details.severity;
+  const summary = dto.description || "Citizen report.";
 
   const department = DEPARTMENTS.find((d) => d.id === deptId) || DEPARTMENTS[0];
 
@@ -114,4 +112,14 @@ export async function fetchUserReports(): Promise<Report[]> {
 export function submitAnonymousReport(report: Report): Report {
   addReport({ ...report, anonymous: true });
   return report;
+}
+
+export async function fetchAllReports(): Promise<Report[]> {
+  try {
+    const dtos = await apiFetch<any[]>("/reports");
+    return dtos.map(mapDtoToReport);
+  } catch (err) {
+    console.warn("Failed to fetch all reports, falling back to local storage:", err);
+    return loadReports();
+  }
 }

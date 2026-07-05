@@ -23,6 +23,7 @@ export default function ReportForm() {
   const [photoPreview, setPhotoPreview] = useState<string>(() => draft?.preview ?? "");
   const [extraPhotos, setExtraPhotos] = useState<{ file: File; preview: string }[]>([]);
   const [description, setDescription] = useState("");
+  const [customInstitution, setCustomInstitution] = useState<string>("auto");
   const [useLocation, setUseLocation] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -100,7 +101,10 @@ export default function ReportForm() {
         photoDataUrl: photoPreview,
         description: description.trim() || undefined,
         location: useLocation && location ? location : undefined,
-        analysis,
+        analysis: {
+          ...analysis!,
+          tags: customInstitution !== "auto" ? [customInstitution] : analysis!.tags,
+        },
         userId: user?.id,
         anonymous: !isAuthenticated,
       };
@@ -202,6 +206,30 @@ export default function ReportForm() {
               placeholder="Describe what happened, when you noticed it, and any safety concerns…"
               className="w-full rounded-lg border border-brand-200 px-3 py-2.5 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
             />
+          </label>
+
+          <label className="mb-4 block">
+            <span className="mb-1.5 block text-sm font-medium text-brand-700">
+              Responding Authority
+            </span>
+            <select
+              value={customInstitution}
+              onChange={(e) => setCustomInstitution(e.target.value)}
+              className="w-full rounded-lg border border-brand-200 bg-white px-3 py-2.5 text-sm focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-500/20"
+            >
+              <option value="auto">Auto-detect responding authority (Recommended)</option>
+              <option value="security">Police (Security / Crime)</option>
+              <option value="traffic">Traffic Accidents Division</option>
+              <option value="fire">Fire & Rescue Brigade</option>
+              <option value="medical">Ambulance / SAMU (Medical Emergency)</option>
+              <option value="gbv">Isange One Stop Center (GBV Helpline)</option>
+              <option value="child">Child Helpline</option>
+              <option value="fraud">RIB (Fraud / Cybercrime)</option>
+              <option value="corruption">Anti-Corruption Hotline</option>
+              <option value="governance">Office of the Ombudsman (Injustice / Stalled Projects)</option>
+              <option value="water">Water Issues (WASAC)</option>
+              <option value="power">Power / Electricity (REG/EUCL)</option>
+            </select>
           </label>
 
           <LocationPicker

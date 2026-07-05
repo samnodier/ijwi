@@ -42,6 +42,15 @@ export function resolveAuthority(
   category?: string | null,
   description?: string | null,
 ): RoutingDecision {
+  if (category) {
+    const cleanedCategory = category.toLowerCase().trim();
+    const authority = findNumber(cleanedCategory);
+    if (authority) {
+      const rule = ROUTING_RULES.find((r) => r.target === authority.category);
+      return { authority, reason: rule ? rule.label : `Directed to ${authority.name}` };
+    }
+  }
+
   const haystack = `${category ?? ""} ${description ?? ""}`.toLowerCase();
 
   for (const rule of ROUTING_RULES) {
