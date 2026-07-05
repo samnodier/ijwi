@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { analyzeImage } from "../lib/analyzeImage";
-import { getDepartmentById } from "../lib/mockAi";
 import type { AnalysisProgress, AnalysisResult, Report } from "../types/report";
 import { useReports } from "../hooks/useReports";
 import { useReportDraft } from "../context/ReportDraftContext";
@@ -9,7 +8,6 @@ import { useAuth } from "../context/AuthContext";
 import PhotoUpload from "./PhotoUpload";
 import LocationPicker from "./LocationPicker";
 import { AnalysisPanel } from "./report/AnalysisPanel";
-import { DepartmentCard } from "./report/DepartmentCard";
 import { Button } from "./ui/Button";
 
 const STEPS = ["Photo", "Details", "Review"] as const;
@@ -69,13 +67,6 @@ export default function ReportForm() {
     }
   };
 
-  const handleDepartmentChange = (departmentId: string) => {
-    const dept = getDepartmentById(departmentId);
-    if (dept && analysis) {
-      setAnalysis({ ...analysis, department: dept });
-    }
-  };
-
   const handleSubmit = async () => {
     if (!photoFile || !analysis) return;
     setSubmitting(true);
@@ -91,8 +82,11 @@ export default function ReportForm() {
         userId: user?.id,
         anonymous: !isAuthenticated,
       };
-      const dispatch = await submitReport(report, photoFile);
-      navigate(`/success/${report.id}`, { state: { dispatch } });
+      // The backend returns the integrated AI service's classification; pass it
+      // to the success screen. Routing/authority is dispatched silently on the
+      // backend and is intentionally never shown to the anonymous citizen.
+      const { ai } = await submitReport(report, photoFile);
+      navigate(`/success/${report.id}`, { state: { ai } });
     } finally {
       setSubmitting(false);
     }
@@ -177,14 +171,6 @@ export default function ReportForm() {
           )}
 
           <AnalysisPanel analysis={analysis} loading={loading} progress={progress} />
-
-          {analysis && (
-            <DepartmentCard
-              department={analysis.department}
-              editable
-              onDepartmentChange={handleDepartmentChange}
-            />
-          )}
 
           {description && (
             <div className="rounded-xl border border-brand-100 bg-white p-4 shadow-sm">

@@ -51,6 +51,9 @@ export function resolveAuthority(
     }
   }
 
+  // ALWAYS SEND: no keyword matched (category is missing, empty, "other", or
+  // otherwise unknown) — we still resolve to the general emergency authority so
+  // that a report is never dropped for lack of a classification.
   const fallback = findNumber("general") ?? emergencyNumbers[0];
   return { authority: fallback, reason: "General / uncategorized" };
 }
@@ -89,7 +92,8 @@ export interface DispatchResult {
  * Route a report to the correct authority and send the context to their phone
  * number via the notify sender (Twilio SMS/WhatsApp, or logged when no
  * provider is configured). Never throws — dispatch must not block a citizen's
- * report from being saved.
+ * report from being saved. resolveAuthority() always returns an authority
+ * (falling back to "general"), so every call here results in a dispatch.
  */
 export async function dispatchReport(report: ReportDTO): Promise<DispatchResult> {
   const decision = resolveAuthority(report.category, report.description);

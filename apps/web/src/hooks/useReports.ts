@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Report, ReportStatus } from "../types/report";
 import { useAuth } from "../context/AuthContext";
 import { fetchUserReports } from "../api/reports";
-import { api, type DispatchInfo } from "../api/client";
+import { api, type AiInfo, type DispatchInfo } from "../api/client";
 import { addReport, updateReportStatus } from "../lib/storage";
 
 export function useReports() {
@@ -29,14 +29,19 @@ export function useReports() {
   }, [refresh]);
 
   const submitReport = useCallback(
-    async (report: Report, photoFile?: File | null): Promise<DispatchInfo | undefined> => {
+    async (
+      report: Report,
+      photoFile?: File | null,
+    ): Promise<{ ai?: AiInfo | null; dispatch?: DispatchInfo }> => {
       // Keep a local copy so the success screen and anonymous tracking work
       // even if the backend is unreachable.
       addReport({ ...report, anonymous: !isAuthenticated });
 
       // Fire the real backend pipeline: upload photo (EXIF → coordinates),
-      // classify with the AI service, route to the right authority, and send
-      // the alert. Returns the dispatch result so the UI can show it.
+      // classify with the integrated AI service, route to the right authority,
+      // and send the alert. Returns the AI classification (shown to the citizen)
+      // and the dispatch result (used internally, not displayed).
+      let ai: AiInfo | null | undefined;
       let dispatch: DispatchInfo | undefined;
       if (photoFile) {
         try {
@@ -51,6 +56,7 @@ export function useReports() {
             },
             [photoFile],
           );
+          ai = created.ai;
           dispatch = created.dispatch;
         } catch (err) {
           console.warn("[ijwi] backend submit failed, kept local copy:", err);
@@ -58,7 +64,7 @@ export function useReports() {
       }
 
       await refresh();
-      return dispatch;
+      return { ai, dispatch };
     },
     [isAuthenticated, refresh],
   );

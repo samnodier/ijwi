@@ -16,7 +16,17 @@ const PORT = Number(process.env.PORT ?? 3000);
 
 const app = express();
 
-app.use(cors());
+// CORS: restrict to CORS_ORIGIN (comma-separated list) when set, e.g. the
+// deployed Vercel frontend. When unset, allow all origins (handy for local
+// dev and demos).
+const corsOrigin = process.env.CORS_ORIGIN?.trim();
+app.use(
+  cors(
+    corsOrigin
+      ? { origin: corsOrigin.split(",").map((o) => o.trim()), credentials: true }
+      : undefined,
+  ),
+);
 app.use(express.json());
 
 // Note: the frontend calls `/api/*`, and the Vite dev proxy strips the

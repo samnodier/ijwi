@@ -11,7 +11,7 @@ import {
   type NewMediaItem,
 } from "../services/posts.js";
 import { isCloudinaryConfigured, uploadMedia } from "../lib/cloudinary.js";
-import { analyzeWithAi } from "../lib/aiClient.js";
+import { analyzeWithAi, isAiConfigured } from "../lib/aiClient.js";
 import { dispatchReport } from "../lib/dispatch.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import type { Location, ReportStatus } from "../types.js";
@@ -135,11 +135,25 @@ reportsRouter.post(
       mediaItems,
     );
 
-    // If the AI service is configured, let it (re)classify from the photos +
-    // text so routing reflects what's actually in the image. Falls back to the
-    // citizen-provided category when the AI service is off or unreachable.
-    const ai = await analyzeWithAi(report);
-    const routedReport = ai ? { ...report, category: ai.category } : report;
+    // AI classification is BEST-EFFORT and must never gate dispatch. Escape
+    // hatch: setting DISABLE_AI=true (or leaving the AI service unconfigured)
+    // "pauses" the AI entirely — we skip the call and route using the
+    // citizen-provided category. The report is still always sent.
+    const aiEnabled = process.env.DISABLE_AI !== "true" && isAiConfigured;
+    const ai = aiEnabled ? await analyzeWithAi(report) : null;
+
+    // "ALWAYS SEND" GUARANTEE: every report is dispatched to an authority,
+    // regardless of the AI outcome. We only use the AI category to refine
+    // routing when it's a real, non-"other" classification; otherwise we fall
+    // back to the citizen-provided category. resolveAuthority() itself falls
+    // back to the general emergency line, so dispatch is never skipped even when
+    // the AI is unreachable, errors, or returns other/empty/"not an issue".
+    const aiCategory = ai?.category?.trim();
+    const routedCategory =
+      aiCategory && aiCategory.toLowerCase() !== "other"
+        ? aiCategory
+        : report.category;
+    const routedReport = { ...report, category: routedCategory };
 
     // Route to the right authority (by category) and send the context to their
     // phone number. Non-blocking failures won't fail the save.
